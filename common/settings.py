@@ -5,9 +5,14 @@
 """
 
 from pydantic_settings import BaseSettings
+from starlette.config import Config
+
+config = Config(".env")
 
 #설정 관리를 위해 사용되는 클래스
 class Settings(BaseSettings):
-    OPENAI_API_KEY: str = "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"
-    SERPAPI_API_KEY: str = "2697b83421fccc4d4e045ad12cda54b978a54e5b4ef40a3e663bc4b9d384b0a0"
-    WOLFRAM_ALPHA_APPID: str = "5Y4GV4-969AJ8AA6X"
+    OPENAI_API_KEY: str = config("OPENAI_API_KEY")
+    SERPAPI_API_KEY: str = config("SERPAPI_API_KEY")
+    WOLFRAM_ALPHA_APPID: str = config("WOLFRAM_ALPHA_APPID")
+    GOOGLE_API_KEY: str = config("GOOGLE_API_KEY")
+    GOOGLE_CES_ID: str = config("GOOGLE_CES_ID")
