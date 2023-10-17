@@ -4,11 +4,14 @@
 날짜: 2023-10-10
 """
 
+from googletrans import Translator
 from langchain.utilities import SerpAPIWrapper, WikipediaAPIWrapper, WolframAlphaAPIWrapper, GoogleSearchAPIWrapper
-from langchain.chains import LLMMathChain
+from langchain.chains import LLMMathChain, AnalyzeDocumentChain
 from langchain.agents import Tool, load_tools
 from langchain.chat_models import ChatOpenAI
 from langchain.tools import WikipediaQueryRun
+from langchain.chains.summarize import load_summarize_chain
+
 from PyNaver import Naver
 import os
 
@@ -16,6 +19,7 @@ from common.settings import Settings
 
 class Tools:
 
+    trans = Translator() 
     settings = Settings()
 
     def __init__(self, llm: ChatOpenAI) -> None:
@@ -24,6 +28,9 @@ class Tools:
         self.wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
         self.wolfram = WolframAlphaAPIWrapper(wolfram_alpha_appid=self.settings.WOLFRAM_ALPHA_APPID)
         self.google_search = GoogleSearchAPIWrapper(google_api_key=self.settings.GOOGLE_API_KEY, google_cse_id=self.settings.GOOGLE_CES_ID)
+
+        summary_chain = load_summarize_chain(llm, chain_type="map_reduce")
+        self.summarize_document_chain = AnalyzeDocumentChain(combine_docs_chain=summary_chain)
 
     def get_tools(self, list) -> None:
         tools = []
@@ -71,3 +78,20 @@ class Tools:
                 )
                 
         return tools
+    
+
+    def get_search(self, query) -> None:
+
+        en_query = self.trans.translate(query, dest="en").text
+
+        search_text = ""
+        # search_text += self.search.run(query) + "\r\n"
+        search_text += self.wolfram.run(en_query) + "\r\n"
+        # search_text += self.google_search.run(query)
+
+        # search = self.summarize_document_chain.run(search_text)
+
+        return search_text
+    
+    def get_wolfram(self):
+        return self.wolfram

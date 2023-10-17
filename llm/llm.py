@@ -15,7 +15,7 @@ class Llm:
     def get_openai(self) -> ChatOpenAI:
 
         model = ChatOpenAI(
-            model = "gpt-4",                    #모델
+            model = "gpt-3.5-turbo",                    #모델
             openai_api_key = self.settings.OPENAI_API_KEY,   #API_KEY
             temperature=0.7 ,                           #답변에 대한 랜덤성
             streaming=True,                             #전체 응답을 기다리지 않고 응답이 가능한 것을 바로 처리함

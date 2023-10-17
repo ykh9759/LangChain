@@ -36,8 +36,8 @@ async def chatModels(commons: CommonQueryParams = Depends()):
 
     trans = Translator()        #구글번역
     llm = getattr(Llm(), f"get_{commons.model}")()          # Llm클래스에서 model명에 맞는 함수 호출                          
-    question = trans.translate(commons.q, dest="en").text   
-    # question = commons.q                              
+    # question = trans.translate(commons.q, dest="en").text   
+    question = commons.q                              
 
     # 랭체인
     ############################################################
@@ -68,7 +68,7 @@ async def chatModels(commons: CommonQueryParams = Depends()):
     Question: {input}
     {agent_scratchpad}"""
 
-    tools = Tools(llm).get_tools(["google-search","wolfram-alpha","wikipedia","llm-math"])
+    tools = Tools(llm).get_tools(["serpapi","llm-math"])
 
     prompt = CustomPromptTemplate(
         template=template,

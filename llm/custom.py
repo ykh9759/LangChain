@@ -16,7 +16,7 @@ class CustomPromptTemplate(BaseChatPromptTemplate):
     # The list of tools available
     tools: List[Tool]
 
-    input: str
+    # input: str
     
     def format_messages(self, **kwargs) -> str:
         # Get the intermediate steps (AgentAction, Observation tuples)
@@ -32,7 +32,7 @@ class CustomPromptTemplate(BaseChatPromptTemplate):
         kwargs["tools"] = "\n".join([f"{tool.name}: {tool.description}" for tool in self.tools])
         # Create a list of tool names for the tools provided
         kwargs["tool_names"] = ", ".join([tool.name for tool in self.tools])
-        kwargs["input"] = self.input
+        # kwargs["input"] = self.input
         formatted = self.template.format(**kwargs)
         return [HumanMessage(content=formatted)]
 
