@@ -14,7 +14,7 @@ router = APIRouter(
     tags=["socket"]
 )
 
-# html파일을 서비스할 수 있는 jinja설정 
+# html파일을 서비스 
 templates = Jinja2Templates(directory="template")
 
 llm = Llm().get_openai()
