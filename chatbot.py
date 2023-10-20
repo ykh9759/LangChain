@@ -1,35 +1,22 @@
-import gradio
-import os
+import gradio as gr
 
-from langchain.schema import AIMessage, HumanMessage, SystemMessage
-from langchain.chains import LLMChain, ConversationChain
-from langchain.memory import ConversationBufferMemory
-from langchain.prompts import PromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate, ChatPromptTemplate
-from starlette.config import Config
+from langchain.schema import AIMessage, HumanMessage
+from langchain.chains import LLMChain
+from langchain.prompts import HumanMessagePromptTemplate, SystemMessagePromptTemplate, ChatPromptTemplate
 from llm.tools import Tools
-
 from llm.llm import Llm
-
-config = Config(".env")
-
-os.environ["OPENAI_API_KEY"] = config("OPENAI_API_KEY")
 
 llm = Llm().get_openai()
 
+system_template="""
+        You are a chatbot that answers questions in Korean.
+
+        Refer to search contents when answering
+
+        {search}
+"""
 
 def response(message, history):
-
-        search = Tools(llm).get_search(message)
-
-
-        system_template="""
-                You are a chatbot that answers questions in Korean.
-
-                Refer to search contents when answering
-
-                {search}
-        """
-        
 
         history_langchain_format = []
         history_langchain_format.append(SystemMessagePromptTemplate.from_template(system_template))
@@ -46,14 +33,16 @@ def response(message, history):
                 verbose=True
         )
 
+        search = Tools(llm).get_search(message)
+
         answer = llm_chain.run(input=message, search=search)
         return answer
 
-gradio.ChatInterface(
+gr.ChatInterface(
         fn=response,
-        textbox=gradio.Textbox(placeholder="질문하기...", container=True, scale=7),
+        textbox=gr.Textbox(placeholder="질문하기...", container=True, scale=7),
         # 채팅창의 크기를 조절한다.
-        chatbot=gradio.Chatbot(height=1000),
+        chatbot=gr.Chatbot(height=1000),
         title="챗봇 테스트",
         description="물어보면 답하는 챗봇입니다.",
         theme="soft",

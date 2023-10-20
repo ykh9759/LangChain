@@ -5,7 +5,7 @@ LLM 관련 파일
 """
 from langchain.chat_models import ChatOpenAI
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
-from common.settings import Settings
+from config.settings import Settings
 
 class Llm:
 
