@@ -4,6 +4,7 @@ LLM 관련 파일
 날짜: 2023-09-21
 """
 from langchain.chat_models import ChatOpenAI
+from langchain.embeddings import OpenAIEmbeddings
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from config.settings import Settings
 
@@ -23,4 +24,7 @@ class Llm:
         )
 
         return model
+    
+    def openai_embeddings(self) -> OpenAIEmbeddings:
+        return OpenAIEmbeddings(openai_api_key=self.settings.OPENAI_API_KEY)
 

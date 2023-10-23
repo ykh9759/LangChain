@@ -4,20 +4,22 @@
 날짜: 2023-09-20
 """
 from fastapi import Depends, APIRouter, status
-from langchain.chains import LLMChain
+from langchain.chains import LLMChain, RetrievalQAWithSourcesChain
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, AIMessagePromptTemplate
 from llm.tools import Tools
 from llm.llm import Llm
 from llm.response import chatModelsResponse
 from googletrans import Translator
-
+from langchain.retrievers.web_research import WebResearchRetriever
+from langchain.vectorstores import Chroma
+from langchain.document_loaders import TextLoader,PyPDFLoader
 
 router = APIRouter(
     prefix="/api/langchain2",
     tags=["langchain"]
 )
 
-
+trans = Translator()  #구글번역
 
 #공통 파라미터
 class CommonQueryParams:
@@ -35,7 +37,6 @@ class CommonQueryParams:
 ) 
 async def chatModels2(commons: CommonQueryParams = Depends()):
 
-    trans = Translator()        #구글번역
     llm = getattr(Llm(), f"get_{commons.model}")()          # Llm클래스에서 model명에 맞는 함수 호출                          
     # question = trans.translate(commons.q, dest="en").text   
     question = commons.q                              
@@ -44,18 +45,11 @@ async def chatModels2(commons: CommonQueryParams = Depends()):
     ############################################################
 
     system_template="You are a chatbot that speaks {language}"
-    system_message_prompt = SystemMessagePromptTemplate.from_template(system_template)
-
-    ai_template="{search}"
-    ai_message_prompt = AIMessagePromptTemplate.from_template(ai_template)
-
-    human_template="{input}"
-    human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
 
     chat_prompt = ChatPromptTemplate.from_messages([
-        system_message_prompt, 
-        human_message_prompt, 
-        ai_message_prompt
+        SystemMessagePromptTemplate.from_template(system_template), 
+        AIMessagePromptTemplate.from_template("{search}"), 
+        HumanMessagePromptTemplate.from_template("{input}")
     ])
 
     chain = LLMChain(
@@ -97,3 +91,52 @@ async def chatModels2(commons: CommonQueryParams = Depends()):
     return response
 
     
+@router.get(
+    "/web-rag",                       #라우터경로
+    status_code=status.HTTP_200_OK      #HTTP status
+) 
+async def webRag(commons: CommonQueryParams = Depends()):
+
+    llm = getattr(Llm(), f"get_{commons.model}")()
+    embeddings = getattr(Llm(), f"{commons.model}_embeddings")()
+    question = trans.translate(commons.q, dest="en").text
+    # question = commons.q    
+    search = Tools(llm).get_google_search()
+
+    vectorstore = Chroma(embedding_function=embeddings,
+                     persist_directory="./chroma_db_oai")
+    
+    web_research_retriever = WebResearchRetriever.from_llm(
+        vectorstore=vectorstore,
+        llm=llm, 
+        search=search, 
+    )
+
+    qa_chain = RetrievalQAWithSourcesChain.from_chain_type(llm,
+                                retriever=web_research_retriever)
+    
+
+    result = qa_chain({"question": question})
+    result
+
+    return result
+
+
+@router.get(
+    "/pdf-rag",                       #라우터경로
+    status_code=status.HTTP_200_OK      #HTTP status
+) 
+async def webRag(commons: CommonQueryParams = Depends()):
+
+    llm = getattr(Llm(), f"get_{commons.model}")()
+    embeddings = getattr(Llm(), f"{commons.model}_embeddings")()
+    question = trans.translate(commons.q, dest="en").text
+    # question = commons.q    
+    search = Tools(llm).get_google_search()
+
+    loader = PyPDFLoader("file/test.pdf")
+    pages = loader.load()
+    
+    print(pages[0])
+
+    return pages

@@ -52,12 +52,11 @@ async def websocket_endpoint(websocket: WebSocket):
         """
 
         prompt = ChatPromptTemplate.from_messages([
-                SystemMessagePromptTemplate.from_template(system_template).format(search=search),
-                # The `variable_name` here is what must align with memory
-                MessagesPlaceholder(variable_name="chat_history"),
-                HumanMessagePromptTemplate.from_template("{input}")
-            ]
-        )
+            SystemMessagePromptTemplate.from_template(system_template).format(search=search),
+            # The `variable_name` here is what must align with memory
+            MessagesPlaceholder(variable_name="chat_history"),
+            HumanMessagePromptTemplate.from_template("{input}")
+        ])
 
         llm_chain = LLMChain(
                 llm=llm,

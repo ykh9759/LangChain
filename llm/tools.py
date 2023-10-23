@@ -100,3 +100,6 @@ class Tools:
     
     def get_wolfram(self):
         return self.wolfram
+    
+    def get_google_search(self):
+        return self.google_search
