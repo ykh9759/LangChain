@@ -5,14 +5,17 @@
 """
 from fastapi import Depends, APIRouter, status
 from langchain.chains import LLMChain, RetrievalQAWithSourcesChain
+from langchain.embeddings import OpenAIEmbeddings
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, AIMessagePromptTemplate
+import tiktoken
 from llm.tools import Tools
 from llm.llm import Llm
 from llm.response import chatModelsResponse
 from googletrans import Translator
 from langchain.retrievers.web_research import WebResearchRetriever
 from langchain.vectorstores import Chroma
-from langchain.document_loaders import TextLoader,PyPDFLoader
+from langchain.document_loaders import TextLoader, PyPDFLoader, JSONLoader
+from langchain.text_splitter import CharacterTextSplitter
 
 router = APIRouter(
     prefix="/api/langchain2",
@@ -129,14 +132,65 @@ async def webRag(commons: CommonQueryParams = Depends()):
 async def webRag(commons: CommonQueryParams = Depends()):
 
     llm = getattr(Llm(), f"get_{commons.model}")()
-    embeddings = getattr(Llm(), f"{commons.model}_embeddings")()
+    embeddings: OpenAIEmbeddings = getattr(Llm(), f"{commons.model}_embeddings")()
     question = trans.translate(commons.q, dest="en").text
     # question = commons.q    
     search = Tools(llm).get_google_search()
 
     loader = PyPDFLoader("file/test.pdf")
     pages = loader.load()
-    
-    print(pages[0])
+    cnt = 0
+    for i in pages:
+        cnt += num_tokens_from_string(i.page_content, "cl100k_base")
+    print(f'예상되는 토큰 수 {cnt}')
 
-    return pages
+    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0, separator="제")
+    documents = text_splitter.split_documents(pages)
+
+    db = Chroma.from_documents(documents, embeddings, persist_directory="./chroma_db")
+    # db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
+
+    searh = db.similarity_search(question)
+    print(searh)
+    
+    return searh
+
+@router.get(
+    "/json-rag",                       #라우터경로
+    status_code=status.HTTP_200_OK      #HTTP status
+) 
+async def webRag(commons: CommonQueryParams = Depends()):
+
+    llm = getattr(Llm(), f"get_{commons.model}")()
+    embeddings: OpenAIEmbeddings = getattr(Llm(), f"{commons.model}_embeddings")()
+    question = trans.translate(commons.q, dest="en").text
+    # question = commons.q    
+    search = Tools(llm).get_google_search()
+
+    loader = JSONLoader(
+        file_path="file/fp_role_plyaing.json",
+        jq_schema="."
+    )
+    json = loader.load()
+    # cnt = 0
+    # for i in pages:
+    #     cnt += num_tokens_from_string(i.page_content, "cl100k_base")
+    # print(f'예상되는 토큰 수 {cnt}')
+
+    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0, separator="제")
+    documents = text_splitter.split_documents(json)
+
+    db = Chroma.from_documents(documents, embeddings, persist_directory="./chroma_db_json")
+    # db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
+
+    searh = db.similarity_search(question)
+    print(searh)
+    
+    return searh
+
+def num_tokens_from_string(string: str, encoding_name: str) -> int:
+    """Returns the number of tokens in a text string."""
+    encoding = tiktoken.get_encoding(encoding_name)
+    num_tokens = len(encoding.encode(string))
+    return num_tokens
+
