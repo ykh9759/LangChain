@@ -106,8 +106,7 @@ async def webRag(commons: CommonQueryParams = Depends()):
     # question = commons.q    
     search = Tools(llm).get_google_search()
 
-    vectorstore = Chroma(embedding_function=embeddings,
-                     persist_directory="./chroma_db_oai")
+    vectorstore = Chroma(embedding_function=embeddings, persist_directory="./chroma_db")
     
     web_research_retriever = WebResearchRetriever.from_llm(
         vectorstore=vectorstore,
@@ -115,12 +114,9 @@ async def webRag(commons: CommonQueryParams = Depends()):
         search=search, 
     )
 
-    qa_chain = RetrievalQAWithSourcesChain.from_chain_type(llm,
-                                retriever=web_research_retriever)
+    qa_chain = RetrievalQAWithSourcesChain.from_chain_type(llm, retriever=web_research_retriever)
     
-
     result = qa_chain({"question": question})
-    result
 
     return result
 
@@ -129,37 +125,59 @@ async def webRag(commons: CommonQueryParams = Depends()):
     "/pdf-rag",                       #라우터경로
     status_code=status.HTTP_200_OK      #HTTP status
 ) 
-async def webRag(commons: CommonQueryParams = Depends()):
+async def pdfRag(commons: CommonQueryParams = Depends()):
 
     llm = getattr(Llm(), f"get_{commons.model}")()
     embeddings: OpenAIEmbeddings = getattr(Llm(), f"{commons.model}_embeddings")()
-    question = trans.translate(commons.q, dest="en").text
-    # question = commons.q    
-    search = Tools(llm).get_google_search()
+    # question = trans.translate(commons.q, dest="en").text
+    question = commons.q    
+    # search = Tools(llm).get_google_search()
 
     loader = PyPDFLoader("file/test.pdf")
     pages = loader.load()
+    print(pages)
     cnt = 0
     for i in pages:
         cnt += num_tokens_from_string(i.page_content, "cl100k_base")
-    print(f'예상되는 토큰 수 {cnt}')
+    print(f'예상 토큰 수 : {cnt}')
 
-    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0, separator="제")
+    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0, separator="/제( [1-9](-[(1-9]|) )조/", is_separator_regex=True)
     documents = text_splitter.split_documents(pages)
 
     db = Chroma.from_documents(documents, embeddings, persist_directory="./chroma_db")
     # db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
 
-    searh = db.similarity_search(question)
-    print(searh)
+    searchs = db.similarity_search(question)
+    print(searchs)
+
+    search = []
+    for s in searchs:
+        search.append(s.page_content)
+
+
+    system_template="You are a chatbot that speaks {language}"
+
+    chat_prompt = ChatPromptTemplate.from_messages([
+        SystemMessagePromptTemplate.from_template(system_template), 
+        AIMessagePromptTemplate.from_template("{search}"), 
+        HumanMessagePromptTemplate.from_template("{input}")
+    ])
+
+    chain = LLMChain(
+        llm=llm,
+        prompt=chat_prompt,
+        verbose=True
+    )
     
-    return searh
+    chat = chain.run(language="korean", search=search, input=question)
+
+    return chat
 
 @router.get(
     "/json-rag",                       #라우터경로
     status_code=status.HTTP_200_OK      #HTTP status
 ) 
-async def webRag(commons: CommonQueryParams = Depends()):
+async def jsonRag(commons: CommonQueryParams = Depends()):
 
     llm = getattr(Llm(), f"get_{commons.model}")()
     embeddings: OpenAIEmbeddings = getattr(Llm(), f"{commons.model}_embeddings")()
@@ -175,7 +193,7 @@ async def webRag(commons: CommonQueryParams = Depends()):
     # cnt = 0
     # for i in pages:
     #     cnt += num_tokens_from_string(i.page_content, "cl100k_base")
-    # print(f'예상되는 토큰 수 {cnt}')
+    # print(f'예상 토큰 수 : {cnt}')
 
     text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0, separator="제")
     documents = text_splitter.split_documents(json)
