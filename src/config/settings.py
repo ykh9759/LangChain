@@ -16,5 +16,3 @@ class Settings(BaseSettings):
     WOLFRAM_ALPHA_APPID: str = config("WOLFRAM_ALPHA_APPID")
     GOOGLE_API_KEY: str = config("GOOGLE_API_KEY")
     GOOGLE_CES_ID: str = config("GOOGLE_CES_ID")
-    BING_SUBSCRIPTION_KEY: str = config("BING_SUBSCRIPTION_KEY")
-    BING_SEARCH_URL: str = "https://api.bing.microsoft.com/v7.0/search"

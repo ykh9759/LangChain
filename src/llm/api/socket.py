@@ -4,9 +4,15 @@ from fastapi.templating import Jinja2Templates
 from langchain.schema import SystemMessage
 from langchain.chains import LLMChain
 from langchain.memory import ConversationBufferMemory, ConversationBufferWindowMemory
-from langchain.prompts import HumanMessagePromptTemplate, SystemMessagePromptTemplate, ChatPromptTemplate,PromptTemplate, MessagesPlaceholder
-from llm.tools import Tools
-from llm.llm import Llm
+from langchain.prompts import (
+    HumanMessagePromptTemplate, 
+    SystemMessagePromptTemplate, 
+    ChatPromptTemplate,
+    PromptTemplate, 
+    MessagesPlaceholder
+)
+from src.llm.tools import Tools
+from src.llm.llm import Llm
 
 
 router = APIRouter(
@@ -17,12 +23,8 @@ router = APIRouter(
 # html파일을 서비스 
 templates = Jinja2Templates(directory="template")
 
-llm = Llm().get_openai()
-tools = Tools(llm)
-
-#대화내역저장
-memory = ConversationBufferWindowMemory(memory_key="chat_history", return_messages=True, k=5)
-
+llm = Llm()
+tools = Tools(llm.get_openai())
 
 # 웹소켓 연결을 테스트 할 수 있는 웹페이지
 @router.get("/client")
@@ -37,6 +39,9 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept() # client의 websocket접속 허용
     await websocket.send_text(f"안녕하세요 : {websocket.client}")
 
+    #대화내역저장
+    memory = ConversationBufferWindowMemory(memory_key="chat_history", return_messages=True, k=5)
+
     while True:
         message = await websocket.receive_text()  # client 메시지 수신대기
         print(f"message received : {message} from : {websocket.client}")
@@ -46,9 +51,9 @@ async def websocket_endpoint(websocket: WebSocket):
         system_template = """
             You are a chatbot that answers questions in Korean.
 
-            Refer to search: (text) contents when answering
+            Refer to search contents when answering
 
-            search: ({search})    
+            search: {search}    
         """
 
         prompt = ChatPromptTemplate.from_messages([

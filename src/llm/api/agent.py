@@ -5,10 +5,10 @@
 """
 from fastapi import Depends, APIRouter, status
 from langchain.agents import initialize_agent, AgentType
-from llm.custom import CustomPromptTemplate
-from llm.tools import Tools
-from llm.llm import Llm
-from llm.response import chatModelsResponse
+from src.llm.custom import CustomPromptTemplate
+from src.llm.tools import Tools
+from src.llm.llm import Llm
+from src.llm.response import chatModelsResponse
 from googletrans import Translator
 
 router = APIRouter(
@@ -28,7 +28,7 @@ class CommonQueryParams:
         self.q = q                                  
 
 @router.get(
-    "/chat-models",                       #라우터경로
+    "/agent",                       #라우터경로
     status_code=status.HTTP_200_OK,       #HTTP status
     response_model=chatModelsResponse     #응답모델 지정
 ) 
@@ -68,7 +68,7 @@ async def chatModels(commons: CommonQueryParams = Depends()):
     Question: {input}
     {agent_scratchpad}"""
 
-    tools = Tools(llm).get_tools(["serpapi","llm-math"])
+    tools = Tools(llm).get_tools(["serpapi","wolfram-alpha","google-search","llm-math"])
 
     prompt = CustomPromptTemplate(
         template=template,

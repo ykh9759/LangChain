@@ -3,8 +3,8 @@ import gradio as gr
 from langchain.schema import AIMessage, HumanMessage
 from langchain.chains import LLMChain
 from langchain.prompts import HumanMessagePromptTemplate, SystemMessagePromptTemplate, ChatPromptTemplate
-from llm.tools import Tools
-from llm.llm import Llm
+from src.llm.tools import Tools
+from src.llm.llm import Llm
 
 llm = Llm().get_openai()
 

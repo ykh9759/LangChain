@@ -8,12 +8,12 @@ from langchain.chains import LLMChain, RetrievalQAWithSourcesChain
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, AIMessagePromptTemplate
 import tiktoken
-from llm.tools import Tools
-from llm.llm import Llm
-from llm.response import chatModelsResponse
+from src.llm.tools import Tools
+from src.llm.llm import Llm
+from src.llm.response import chatModelsResponse
 from googletrans import Translator
 from langchain.retrievers.web_research import WebResearchRetriever
-from langchain.vectorstores import Chroma
+from langchain.vectorstores.chroma import Chroma
 from langchain.document_loaders import TextLoader, PyPDFLoader, JSONLoader
 from langchain.text_splitter import CharacterTextSplitter
 
@@ -101,7 +101,7 @@ async def chatModels2(commons: CommonQueryParams = Depends()):
 async def webRag(commons: CommonQueryParams = Depends()):
 
     llm = getattr(Llm(), f"get_{commons.model}")()
-    embeddings = getattr(Llm(), f"{commons.model}_embeddings")()
+    embeddings = getattr(Llm(), f"get_{commons.model}_embeddings")()
     question = trans.translate(commons.q, dest="en").text
     # question = commons.q    
     search = Tools(llm).get_google_search()
@@ -128,7 +128,7 @@ async def webRag(commons: CommonQueryParams = Depends()):
 async def pdfRag(commons: CommonQueryParams = Depends()):
 
     llm = getattr(Llm(), f"get_{commons.model}")()
-    embeddings: OpenAIEmbeddings = getattr(Llm(), f"{commons.model}_embeddings")()
+    embeddings = getattr(Llm(), f"get_{commons.model}_embeddings")()
     # question = trans.translate(commons.q, dest="en").text
     question = commons.q    
     # search = Tools(llm).get_google_search()
@@ -141,7 +141,7 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
         cnt += num_tokens_from_string(i.page_content, "cl100k_base")
     print(f'예상 토큰 수 : {cnt}')
 
-    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0, separator="/제( [1-9](-[(1-9]|) )조/", is_separator_regex=True)
+    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0, separator="\n")
     documents = text_splitter.split_documents(pages)
 
     db = Chroma.from_documents(documents, embeddings, persist_directory="./chroma_db")
@@ -150,9 +150,9 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
     searchs = db.similarity_search(question)
     print(searchs)
 
-    search = []
+    search = ""
     for s in searchs:
-        search.append(s.page_content)
+        search += s.page_content + "\n\n"
 
 
     system_template="You are a chatbot that speaks {language}"
@@ -180,7 +180,7 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
 async def jsonRag(commons: CommonQueryParams = Depends()):
 
     llm = getattr(Llm(), f"get_{commons.model}")()
-    embeddings: OpenAIEmbeddings = getattr(Llm(), f"{commons.model}_embeddings")()
+    embeddings = getattr(Llm(), f"get_{commons.model}_embeddings")()
     question = trans.translate(commons.q, dest="en").text
     # question = commons.q    
     search = Tools(llm).get_google_search()

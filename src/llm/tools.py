@@ -11,11 +11,8 @@ from langchain.agents import Tool, load_tools
 from langchain.chat_models import ChatOpenAI
 from langchain.tools import WikipediaQueryRun
 from langchain.chains.summarize import load_summarize_chain
-
 from PyNaver import Naver
-import os
-
-from config.settings import Settings
+from src.config.settings import Settings
 
 class Tools:
 
