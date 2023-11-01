@@ -4,7 +4,7 @@
 날짜: 2023-09-20
 """
 from fastapi import Depends, APIRouter, status
-from langchain.chains import LLMChain, RetrievalQAWithSourcesChain
+from langchain.chains import LLMChain, RetrievalQAWithSourcesChain, RetrievalQA, ChatVectorDBChain, ConversationalRetrievalChain
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, AIMessagePromptTemplate
 import tiktoken
@@ -15,7 +15,7 @@ from googletrans import Translator
 from langchain.retrievers.web_research import WebResearchRetriever
 from langchain.vectorstores.chroma import Chroma
 from langchain.document_loaders import TextLoader, PyPDFLoader, JSONLoader
-from langchain.text_splitter import CharacterTextSplitter
+from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
 
 router = APIRouter(
     prefix="/api/langchain2",
@@ -129,82 +129,45 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
 
     llm = getattr(Llm(), f"get_{commons.model}")()
     embeddings = getattr(Llm(), f"get_{commons.model}_embeddings")()
-    # question = trans.translate(commons.q, dest="en").text
     question = commons.q    
-    # search = Tools(llm).get_google_search()
 
     loader = PyPDFLoader("file/test.pdf")
     pages = loader.load()
-    print(pages)
     cnt = 0
     for i in pages:
         cnt += num_tokens_from_string(i.page_content, "cl100k_base")
     print(f'예상 토큰 수 : {cnt}')
 
-    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0, separator="\n")
+    # text_splitter = RecursiveCharacterTextSplitter(
+    #     separators=["\n"],
+    #     chunk_size = 1000,
+    #     chunk_overlap  = 200,
+    #     add_start_index = True
+    # )
+
+    text_splitter = CharacterTextSplitter(
+        separator="\n",
+        chunk_size = 1000,
+        chunk_overlap  = 200
+    )
+
     documents = text_splitter.split_documents(pages)
+    # print(documents)
 
     db = Chroma.from_documents(documents, embeddings, persist_directory="./chroma_db")
     # db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
+    retriever = db.as_retriever(search_kwargs={"k": 3})
 
-    searchs = db.similarity_search(question)
-    print(searchs)
-
-    search = ""
-    for s in searchs:
-        search += s.page_content + "\n\n"
-
-
-    system_template="You are a chatbot that speaks {language}"
-
-    chat_prompt = ChatPromptTemplate.from_messages([
-        SystemMessagePromptTemplate.from_template(system_template), 
-        AIMessagePromptTemplate.from_template("{search}"), 
-        HumanMessagePromptTemplate.from_template("{input}")
-    ])
-
-    chain = LLMChain(
+    chain = ConversationalRetrievalChain.from_llm(
         llm=llm,
-        prompt=chat_prompt,
-        verbose=True
+        verbose=True,
+        retriever=retriever,
+        return_source_documents=True
     )
     
-    chat = chain.run(language="korean", search=search, input=question)
+    chat = chain({"question":question, "chat_history": []})
 
     return chat
-
-@router.get(
-    "/json-rag",                       #라우터경로
-    status_code=status.HTTP_200_OK      #HTTP status
-) 
-async def jsonRag(commons: CommonQueryParams = Depends()):
-
-    llm = getattr(Llm(), f"get_{commons.model}")()
-    embeddings = getattr(Llm(), f"get_{commons.model}_embeddings")()
-    question = trans.translate(commons.q, dest="en").text
-    # question = commons.q    
-    search = Tools(llm).get_google_search()
-
-    loader = JSONLoader(
-        file_path="file/fp_role_plyaing.json",
-        jq_schema="."
-    )
-    json = loader.load()
-    # cnt = 0
-    # for i in pages:
-    #     cnt += num_tokens_from_string(i.page_content, "cl100k_base")
-    # print(f'예상 토큰 수 : {cnt}')
-
-    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0, separator="제")
-    documents = text_splitter.split_documents(json)
-
-    db = Chroma.from_documents(documents, embeddings, persist_directory="./chroma_db_json")
-    # db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
-
-    searh = db.similarity_search(question)
-    print(searh)
-    
-    return searh
 
 def num_tokens_from_string(string: str, encoding_name: str) -> int:
     """Returns the number of tokens in a text string."""

@@ -23,8 +23,8 @@ router = APIRouter(
 # html파일을 서비스 
 templates = Jinja2Templates(directory="template")
 
-llm = Llm()
-tools = Tools(llm.get_openai())
+llm = Llm().get_openai()
+tools = Tools(llm)
 
 # 웹소켓 연결을 테스트 할 수 있는 웹페이지
 @router.get("/client")
