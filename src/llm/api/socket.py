@@ -23,6 +23,7 @@ router = APIRouter(
 # html파일을 서비스 
 templates = Jinja2Templates(directory="template")
 
+#에러원인 llm변수가 아래 LLMChain의 llm파라미터에 사용되는데 llm객체를 전달하면 오류가 발생한다.
 llm = Llm().get_openai()
 tools = Tools(llm)
 

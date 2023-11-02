@@ -3,19 +3,31 @@
 작성: 염경훈
 날짜: 2023-09-20
 """
+import time
+from typing import Iterable
+import tiktoken
+import re
+
 from fastapi import Depends, APIRouter, status
 from langchain.chains import LLMChain, RetrievalQAWithSourcesChain, RetrievalQA, ChatVectorDBChain, ConversationalRetrievalChain
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, AIMessagePromptTemplate
-import tiktoken
 from src.llm.tools import Tools
 from src.llm.llm import Llm
 from src.llm.response import chatModelsResponse
 from googletrans import Translator
 from langchain.retrievers.web_research import WebResearchRetriever
 from langchain.vectorstores.chroma import Chroma
+from langchain.vectorstores.faiss import FAISS
 from langchain.document_loaders import TextLoader, PyPDFLoader, JSONLoader
 from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
+from langchain.storage import (
+    InMemoryStore,
+    LocalFileStore,
+    RedisStore,
+    UpstashRedisStore,
+)
+from langchain.embeddings import OpenAIEmbeddings, CacheBackedEmbeddings
 
 router = APIRouter(
     prefix="/api/langchain2",
@@ -128,44 +140,66 @@ async def webRag(commons: CommonQueryParams = Depends()):
 async def pdfRag(commons: CommonQueryParams = Depends()):
 
     llm = getattr(Llm(), f"get_{commons.model}")()
-    embeddings = getattr(Llm(), f"get_{commons.model}_embeddings")()
+    embeddings: OpenAIEmbeddings = getattr(Llm(), f"get_{commons.model}_embeddings")()
     question = commons.q    
 
     loader = PyPDFLoader("file/test.pdf")
     pages = loader.load()
     cnt = 0
+    texts = ""
     for i in pages:
         cnt += num_tokens_from_string(i.page_content, "cl100k_base")
+        pattern = r'\d+\x00/\x00\d+'
+        texts += re.sub(pattern, "" , i.page_content)
+        # texts += i.page_content
+
     print(f'예상 토큰 수 : {cnt}')
 
-    # text_splitter = RecursiveCharacterTextSplitter(
-    #     separators=["\n"],
-    #     chunk_size = 1000,
-    #     chunk_overlap  = 200,
-    #     add_start_index = True
-    # )
-
-    text_splitter = CharacterTextSplitter(
-        separator="\n",
+    text_splitter = RecursiveCharacterTextSplitter(
+        separators=["제.*조","\n \n"],
         chunk_size = 1000,
         chunk_overlap  = 200
     )
 
-    documents = text_splitter.split_documents(pages)
-    # print(documents)
+    documents = text_splitter.split_text(texts)
+    print(documents)
 
-    db = Chroma.from_documents(documents, embeddings, persist_directory="./chroma_db")
+    # db = Chroma(embedding_function=embeddings, persist_directory="./chroma_db")
+
+    file = open("file/test.log","w", encoding="utf-8")
+
+    c=0
+    for document in documents:
+        c += 1
+        print(str(c) + document)
+        print("=====================================================")
+        file.write(f"{str(c)} : {document} \n")
+        file.write("=====================================================\n\n")
+        
+        
+        # if db is None:
+        #     db = Chroma.from_texts([document], cached_embedder, persist_directory="./chroma_db")
+        # else:
+        # db.add_texts([document])
+            # time.sleep(0.1)  # wait for 60 seconds before processing the next document
+
+
     # db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
-    retriever = db.as_retriever(search_kwargs={"k": 3})
 
-    chain = ConversationalRetrievalChain.from_llm(
-        llm=llm,
-        verbose=True,
-        retriever=retriever,
-        return_source_documents=True
-    )
     
-    chat = chain({"question":question, "chat_history": []})
+
+    # retriever = db.as_retriever(search_kwargs={"k": 3})
+
+    # chain = ConversationalRetrievalChain.from_llm(
+    #     llm=llm,
+    #     verbose=True,
+    #     retriever=retriever,
+    #     return_source_documents=True
+    # )
+    
+    # chat = chain({"question":question, "chat_history": []})
+    file.close()
+    chat = "테스트"
 
     return chat
 
