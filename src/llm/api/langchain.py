@@ -162,18 +162,21 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
     section_splitter = RecursiveCharacterTextSplitter(
         separators=[".*제 [1-9] 절.*"],
         chunk_size = 1000,
+        chunk_overlap=0,
         is_separator_regex=True
     )
 
     sub_section_splitter = RecursiveCharacterTextSplitter(
         separators=[".*제 [1-9] 관.*"],
-        chunk_size = 1000,
+        chunk_size = 100,
+        chunk_overlap=0,
         is_separator_regex=True
     )
 
     article_splitter = RecursiveCharacterTextSplitter(
-        separators=["\n \n제\s?\d+-?\d*\s?조.*"],
-        chunk_size = 300,
+        separators=["\n\s*\n\s*제\s?\d+-?\d*\s?조.*"],
+        chunk_size = 100,
+        chunk_overlap=0,
         is_separator_regex=True
     )
 
@@ -186,11 +189,6 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
 
     list_text = ""
     for section in sections:
-
-        print(str(c) + section)
-        print("=====================================================")
-        file.write(f"{str(c)} {len(section)} \n {section} \n")
-        file.write("=====================================================\n\n")
 
         section_match = re.search(".*제 [1-9] 절.*", section)
         if section_match:
@@ -210,7 +208,7 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
             articles = article_splitter.split_text(sub_section)
             for article in articles:
 
-                article_match = re.search("\n \n제\s?\d+-?\d*\s?조.*", article)
+                article_match = re.search("\n\s*\n\s*제\s?\d+-?\d*\s?조.*", article)
                 if article_match:
                     list_text += " ㄴ"+article_match.group()+"\n"
                 else:
