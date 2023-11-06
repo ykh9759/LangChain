@@ -139,54 +139,91 @@ async def webRag(commons: CommonQueryParams = Depends()):
 ) 
 async def pdfRag(commons: CommonQueryParams = Depends()):
 
+    start_time = time.time()
+
     llm = getattr(Llm(), f"get_{commons.model}")()
     embeddings: OpenAIEmbeddings = getattr(Llm(), f"get_{commons.model}_embeddings")()
     question = commons.q    
 
-    loader = PyPDFLoader("file/test.pdf")
-    pages = loader.load()
-    cnt = 0
-    texts = ""
-    for i in pages:
-        cnt += num_tokens_from_string(i.page_content, "cl100k_base")
-        pattern = r'\d+\x00/\x00\d+'
-        texts += re.sub(pattern, "" , i.page_content)
-        # texts += i.page_content
+    # loader = PyPDFLoader("file/test.pdf")
+    # pages = loader.load()
+    # cnt = 0
+    # texts = ""
+    # for i in pages:
+    #     cnt += num_tokens_from_string(i.page_content, "cl100k_base")
+    #     pattern = r'\d+\x00/\x00\d+'
+    #     texts += re.sub(pattern, "" , i.page_content)
 
-    print(f'예상 토큰 수 : {cnt}')
+    file2 = open("file/test.txt","r", encoding="utf-8")
+    documents = file2.read()
+    file2.close()
 
-    text_splitter = RecursiveCharacterTextSplitter(
-        separators=["제.*조","\n \n"],
+    # print(f'예상 토큰 수 : {cnt}')
+    section_splitter = RecursiveCharacterTextSplitter(
+        separators=[".*제 [1-9] 절.*"],
         chunk_size = 1000,
-        chunk_overlap  = 200
+        is_separator_regex=True
     )
 
-    documents = text_splitter.split_text(texts)
-    print(documents)
+    sub_section_splitter = RecursiveCharacterTextSplitter(
+        separators=[".*제 [1-9] 관.*"],
+        chunk_size = 1000,
+        is_separator_regex=True
+    )
 
-    # db = Chroma(embedding_function=embeddings, persist_directory="./chroma_db")
+    article_splitter = RecursiveCharacterTextSplitter(
+        separators=["\n \n제\s?\d+-?\d*\s?조.*"],
+        chunk_size = 300,
+        is_separator_regex=True
+    )
+
+    # db = Chroma(embedding_function=embeddings)
 
     file = open("file/test.log","w", encoding="utf-8")
 
     c=0
-    for document in documents:
-        c += 1
-        print(str(c) + document)
+    sections = section_splitter.split_text(documents)
+
+    list_text = ""
+    for section in sections:
+
+        print(str(c) + section)
         print("=====================================================")
-        file.write(f"{str(c)} : {document} \n")
+        file.write(f"{str(c)} {len(section)} \n {section} \n")
         file.write("=====================================================\n\n")
-        
-        
-        # if db is None:
-        #     db = Chroma.from_texts([document], cached_embedder, persist_directory="./chroma_db")
-        # else:
-        # db.add_texts([document])
-            # time.sleep(0.1)  # wait for 60 seconds before processing the next document
 
+        section_match = re.search(".*제 [1-9] 절.*", section)
+        if section_match:
+            list_text += section_match.group()+"\n"
+        else:
+            list_text += "\n"
 
-    # db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
+        sub_sections = sub_section_splitter.split_text(section)
+        for sub_section in sub_sections:
 
-    
+            sub_section_match = re.search(".*제 [1-9] 관.*", sub_section)
+            if sub_section_match:
+                list_text += "ㄴ"+sub_section_match.group()+"\n"
+            else: 
+                list_text += "ㄴ\n"
+                
+            articles = article_splitter.split_text(sub_section)
+            for article in articles:
+
+                article_match = re.search("\n \n제\s?\d+-?\d*\s?조.*", article)
+                if article_match:
+                    list_text += " ㄴ"+article_match.group()+"\n"
+                else:
+                    list_text += " ㄴ\n"
+
+                text = article
+                file.write(f"{str(c)} {len(text)} \n {text} \n")
+                file.write("=====================================================\n\n")
+
+    file_list = open("file/list.log","w", encoding="utf-8")
+    file_list.write(list_text)
+    file_list.close()
+    file.close()
 
     # retriever = db.as_retriever(search_kwargs={"k": 3})
 
@@ -198,8 +235,13 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
     # )
     
     # chat = chain({"question":question, "chat_history": []})
-    file.close()
-    chat = "테스트"
+
+    # end_time = time.time()
+
+    # execution_time = end_time - start_time
+
+    # print(f"프로그램 실행 시간: {execution_time} 초")
+    chat="테스트"
 
     return chat
 
