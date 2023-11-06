@@ -168,14 +168,14 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
 
     sub_section_splitter = RecursiveCharacterTextSplitter(
         separators=[".*제 [1-9] 관.*"],
-        chunk_size = 100,
+        chunk_size = 10,
         chunk_overlap=0,
         is_separator_regex=True
     )
 
     article_splitter = RecursiveCharacterTextSplitter(
         separators=["\n\s*\n\s*제\s?\d+-?\d*\s?조.*"],
-        chunk_size = 100,
+        chunk_size = 50,
         chunk_overlap=0,
         is_separator_regex=True
     )
@@ -214,7 +214,7 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
                 else:
                     list_text += " ㄴ\n"
 
-                text = article
+                text = f"{section_match.group()}\n\n{sub_section_match.group()}\n\n{article}"
                 file.write(f"{str(c)} {len(text)} \n {text} \n")
                 file.write("=====================================================\n\n")
 
