@@ -144,6 +144,7 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
     llm = getattr(Llm(), f"get_{commons.model}")()
     embeddings: OpenAIEmbeddings = getattr(Llm(), f"get_{commons.model}_embeddings")()
     question = commons.q    
+    db = Chroma(embedding_function=embeddings, persist_directory="./chroma_db")
 
     # loader = PyPDFLoader("file/test.pdf")
     # pages = loader.load()
@@ -153,12 +154,10 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
     #     cnt += num_tokens_from_string(i.page_content, "cl100k_base")
     #     pattern = r'\d+\x00/\x00\d+'
     #     texts += re.sub(pattern, "" , i.page_content)
-
-    file2 = open("file/test.txt","r", encoding="utf-8")
-    documents = file2.read()
-    file2.close()
-
     # print(f'예상 토큰 수 : {cnt}')
+
+
+    #절로 자르는 spliter
     section_splitter = RecursiveCharacterTextSplitter(
         separators=[".*제 [1-9] 절.*"],
         chunk_size = 1000,
@@ -166,6 +165,7 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
         is_separator_regex=True
     )
 
+    #관으로 자르는 spliter
     sub_section_splitter = RecursiveCharacterTextSplitter(
         separators=[".*제 [1-9] 관.*"],
         chunk_size = 10,
@@ -173,73 +173,67 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
         is_separator_regex=True
     )
 
+    #조로 자느는 spliter
     article_splitter = RecursiveCharacterTextSplitter(
-        separators=["\n\s*\n\s*제\s?\d+-?\d*\s?조.*"],
-        chunk_size = 50,
+        separators=["\n\s*\n\s*제\s?\d+-?\d*\s?조.*","\n\s*【 별표"],
+        chunk_size = 10,
         chunk_overlap=0,
         is_separator_regex=True
     )
 
-    # db = Chroma(embedding_function=embeddings)
-
     file = open("file/test.log","w", encoding="utf-8")
+    file2 = open("file/test.txt","r", encoding="utf-8")
+    documents = file2.read()
 
     c=0
+    #텍스트 안에서 절로 자른다
     sections = section_splitter.split_text(documents)
+    for section in sections:  
 
-    list_text = ""
-    for section in sections:
-
-        section_match = re.search(".*제 [1-9] 절.*", section)
-        if section_match:
-            list_text += section_match.group()+"\n"
-        else:
-            list_text += "\n"
-
+        #절로 잘린 텍스트 안에서 관으로 다시 자른다
         sub_sections = sub_section_splitter.split_text(section)
         for sub_section in sub_sections:
 
-            sub_section_match = re.search(".*제 [1-9] 관.*", sub_section)
-            if sub_section_match:
-                list_text += "ㄴ"+sub_section_match.group()+"\n"
-            else: 
-                list_text += "ㄴ\n"
-                
+            #관로 잘린 텍스트 안에서 조으로 다시 자른다
             articles = article_splitter.split_text(sub_section)
             for article in articles:
 
-                article_match = re.search("\n\s*\n\s*제\s?\d+-?\d*\s?조.*", article)
-                if article_match:
-                    list_text += " ㄴ"+article_match.group()+"\n"
-                else:
-                    list_text += " ㄴ\n"
+                section_match = re.search(".*제 [1-9] 절.*", section)               #절로 자른 첫번째로 매치된 절을 가져온다.
+                sub_section_match = re.search(".*제 [1-9] 관.*", sub_section)       #관으로 자른 첫번째로 매치된 관을 가져온다
+                # article_match = re.search("\n\s*\n\s*제\s?\d+-?\d*\s?조.*", article)
 
-                text = f"{section_match.group()}\n\n{sub_section_match.group()}\n\n{article}"
+                text = ""
+                text += f"{section_match.group()}\n\n" if section_match else ""
+                text += f"{sub_section_match.group()}" if sub_section_match else ""
+                text += article if article else ""
                 file.write(f"{str(c)} {len(text)} \n {text} \n")
                 file.write("=====================================================\n\n")
+                print(f"{str(c)} {len(text)} \n {text} \n")
+                print("=====================================================\n\n")
 
-    file_list = open("file/list.log","w", encoding="utf-8")
-    file_list.write(list_text)
-    file_list.close()
+                db.add_texts([text])
+                c += 1
+
     file.close()
+    file2.close()
 
-    # retriever = db.as_retriever(search_kwargs={"k": 3})
+    retriever = db.as_retriever(search_kwargs={"k": 3})
 
-    # chain = ConversationalRetrievalChain.from_llm(
-    #     llm=llm,
-    #     verbose=True,
-    #     retriever=retriever,
-    #     return_source_documents=True
-    # )
+    chain = ConversationalRetrievalChain.from_llm(
+        llm=llm,
+        verbose=True,
+        retriever=retriever,
+        return_source_documents=True
+    )
     
-    # chat = chain({"question":question, "chat_history": []})
+    chat = chain({"question":question, "chat_history": []})
 
-    # end_time = time.time()
+    end_time = time.time()
 
-    # execution_time = end_time - start_time
+    execution_time = end_time - start_time
 
-    # print(f"프로그램 실행 시간: {execution_time} 초")
-    chat="테스트"
+    print(f"프로그램 실행 시간: {execution_time} 초")
+    # chat="테스트"
 
     return chat
 
