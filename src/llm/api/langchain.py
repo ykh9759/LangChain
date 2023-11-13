@@ -156,68 +156,99 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
     #     texts += re.sub(pattern, "" , i.page_content)
     # print(f'예상 토큰 수 : {cnt}')
 
+    #약관로 자르는 spliter
+    terms_splitter = CharacterTextSplitter(
+        separator="\n\se.*약관",
+        chunk_size=10,
+        chunk_overlap=0,
+        is_separator_regex=True,
+        keep_separator=True
+    )
 
     #절로 자르는 spliter
-    section_splitter = RecursiveCharacterTextSplitter(
-        separators=[".*제 [1-9] 절.*"],
-        chunk_size = 1000,
+    section_splitter = CharacterTextSplitter(
+        separator="제 [1-9] 절.*",
+        chunk_size=10,
         chunk_overlap=0,
-        is_separator_regex=True
+        is_separator_regex=True,
+        keep_separator=True
     )
 
     #관으로 자르는 spliter
-    sub_section_splitter = RecursiveCharacterTextSplitter(
-        separators=[".*제 [1-9] 관.*"],
-        chunk_size = 10,
+    sub_section_splitter = CharacterTextSplitter(
+        separator="제 [1-9] 관.*",
+        chunk_size=10,
         chunk_overlap=0,
-        is_separator_regex=True
+        is_separator_regex=True,
+        keep_separator=True
     )
 
     #조로 자느는 spliter
     article_splitter = RecursiveCharacterTextSplitter(
         separators=["\n\s*\n\s*제\s?\d+-?\d*\s?조.*","\n\s*【 별표"],
-        chunk_size = 10,
+        chunk_size=10,
         chunk_overlap=0,
         is_separator_regex=True
     )
 
-    file = open("file/test.log","w", encoding="utf-8")
+    # file = open("file/test.log","w", encoding="utf-8")
     file2 = open("file/test.txt","r", encoding="utf-8")
     documents = file2.read()
 
     c=0
-    #텍스트 안에서 절로 자른다
-    sections = section_splitter.split_text(documents)
-    for section in sections:  
 
-        #절로 잘린 텍스트 안에서 관으로 다시 자른다
-        sub_sections = sub_section_splitter.split_text(section)
-        for sub_section in sub_sections:
+    array_text = []
 
-            #관로 잘린 텍스트 안에서 조으로 다시 자른다
-            articles = article_splitter.split_text(sub_section)
-            for article in articles:
+    # terms = terms_splitter.split_text(documents)
+    # for term in terms:
+    #     # file.write(f"{term} \n")
+    #     # file.write("=====================================================\n\n")
+        
+    #     #텍스트 안에서 절로 자른다
+    #     sections = section_splitter.split_text(term)
+    #     for section in sections:  
 
-                section_match = re.search(".*제 [1-9] 절.*", section)               #절로 자른 첫번째로 매치된 절을 가져온다.
-                sub_section_match = re.search(".*제 [1-9] 관.*", sub_section)       #관으로 자른 첫번째로 매치된 관을 가져온다
-                # article_match = re.search("\n\s*\n\s*제\s?\d+-?\d*\s?조.*", article)
+    #         #절로 잘린 텍스트 안에서 관으로 다시 자른다
+    #         sub_sections = sub_section_splitter.split_text(section)
+    #         for sub_section in sub_sections:
 
-                text = ""
-                text += f"{section_match.group()}\n\n" if section_match else ""
-                text += f"{sub_section_match.group()}" if sub_section_match else ""
-                text += article if article else ""
-                file.write(f"{str(c)} {len(text)} \n {text} \n")
-                file.write("=====================================================\n\n")
-                print(f"{str(c)} {len(text)} \n {text} \n")
-                print("=====================================================\n\n")
+    #             #관로 잘린 텍스트 안에서 조으로 다시 자른다
+    #             articles = article_splitter.split_text(sub_section)
+    #             for article in articles:
 
-                db.add_texts([text])
-                c += 1
+    #                 term_match = re.search("e.*약관 \n", term)
+    #                 section_match = re.search(".*제 [1-9] 절.*", section)               #절로 자른 첫번째로 매치된 절을 가져온다.
+    #                 sub_section_match = re.search(".*제 [1-9] 관.*", sub_section)       #관으로 자른 첫번째로 매치된 관을 가져온다
+    #                 article_match = re.search("\n\s*\n\s*제\s?\d+-?\d*\s?조.*", article)
+    #                 asterisk_match = re.search("\n\s*【 별표", article)
 
-    file.close()
+    #                 text = ""
+
+    #                 if article_match:
+    #                     text += term_match.group() if term_match else ""
+    #                     text += f"{section_match.group()}\n" if section_match else ""
+    #                     text += sub_section_match.group() if sub_section_match else ""
+    #                     text += article
+    #                 elif asterisk_match:
+    #                     text += term_match.group() if term_match else ""
+    #                     text += article
+
+    #                 if text:
+    #                     file.write(f"{str(c)} {len(text)} \n {text} \n")
+    #                     file.write("=====================================================\n\n")
+    #                     print(f"{str(c)} {len(text)} \n {text} \n")
+    #                     print("=====================================================\n\n")
+    #                     array_text.append(text)
+    #                     c += 1
+
+                    # if len(array_text) >= 50:
+                    #     db.add_texts(array_text)
+                    #     array_text.clear()
+
+    # file.close()
     file2.close()
 
-    retriever = db.as_retriever(search_kwargs={"k": 3})
+    retriever = db.as_retriever(search_kwargs={"k": 1})
 
     chain = ConversationalRetrievalChain.from_llm(
         llm=llm,
