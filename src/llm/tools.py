@@ -27,9 +27,6 @@ class Tools:
         self.google_search = GoogleSearchAPIWrapper(google_api_key=self.settings.GOOGLE_API_KEY, google_cse_id=self.settings.GOOGLE_CES_ID)
         self.naver = Naver(client_id="rnniAuJmGFFu7FZDG4JG", client_secret="D0iBI0Vs6G")
 
-        summary_chain = load_summarize_chain(llm, chain_type="map_reduce")
-        self.summarize_document_chain = AnalyzeDocumentChain(combine_docs_chain=summary_chain)
-
     def get_tools(self, list) -> None:
         tools = []
 
@@ -90,8 +87,6 @@ class Tools:
         # wiki = self.wikipedia.run(query)
         # print(wiki)
         # search_text += self.google_search.run(query)
-
-        # search = self.summarize_document_chain.run(search_text)
 
         return search_text
     

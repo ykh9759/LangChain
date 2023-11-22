@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import PlainTextResponse
-from src.llm.api import langchain, agent, socket
+from src.llm.test import langchain, agent, socket
 
 app = FastAPI()                 #FastAPI객체 생성
 

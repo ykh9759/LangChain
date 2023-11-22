@@ -8,15 +8,12 @@ from langchain.agents import initialize_agent, AgentType
 from src.llm.custom import CustomPromptTemplate
 from src.llm.tools import Tools
 from src.llm.llm import Llm
-from src.llm.response import chatModelsResponse
 from googletrans import Translator
 
 router = APIRouter(
-    prefix="/api/langchain",
+    prefix="/api",
     tags=["langchain"]
 )
-
-
 
 #공통 파라미터
 class CommonQueryParams:
@@ -29,10 +26,9 @@ class CommonQueryParams:
 
 @router.get(
     "/agent",                       #라우터경로
-    status_code=status.HTTP_200_OK,       #HTTP status
-    response_model=chatModelsResponse     #응답모델 지정
+    status_code=status.HTTP_200_OK      #HTTP status
 ) 
-async def chatModels(commons: CommonQueryParams = Depends()):
+async def agent(commons: CommonQueryParams = Depends()):
 
     trans = Translator()        #구글번역
     llm = getattr(Llm(), f"get_{commons.model}")()          # Llm클래스에서 model명에 맞는 함수 호출                          
