@@ -13,18 +13,18 @@ class Llm:
     settings = Settings()
     
     # ChatOpenAI 모델을 생성하는 함수
-    def get_openai(self) -> ChatOpenAI:
+    def get_llm(self, model_name):
 
-        model = ChatOpenAI(
-            model = "gpt-3.5-turbo",                    #모델
-            openai_api_key = self.settings.OPENAI_API_KEY,   #API_KEY
-            temperature=0.7 ,                           #답변에 대한 랜덤성
-            streaming=True,                             #전체 응답을 기다리지 않고 응답이 가능한 것을 바로 처리함
-            callbacks=[StreamingStdOutCallbackHandler()]
-        )
+        if model_name == "openai":
+            return ChatOpenAI(
+                model = "gpt-3.5-turbo",                    #모델
+                openai_api_key = self.settings.OPENAI_API_KEY,   #API_KEY
+                temperature=0.8 ,                           #답변에 대한 랜덤성
+                streaming=True,                             #전체 응답을 기다리지 않고 응답이 가능한 것을 바로 처리함
+                callbacks=[StreamingStdOutCallbackHandler()]
+            )
 
-        return model
-    
-    def get_openai_embeddings(self) -> OpenAIEmbeddings:
-        return OpenAIEmbeddings(openai_api_key=self.settings.OPENAI_API_KEY)
+    def get_embeddings(self, model_name):
+        if model_name == "openai":
+            return OpenAIEmbeddings(openai_api_key=self.settings.OPENAI_API_KEY)
 

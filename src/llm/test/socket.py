@@ -24,7 +24,7 @@ router = APIRouter(
 templates = Jinja2Templates(directory="template")
 
 #에러원인 llm변수가 아래 LLMChain의 llm파라미터에 사용되는데 llm객체를 전달하면 오류가 발생한다.
-llm = Llm().get_openai()
+llm = Llm().get_llm("openai")
 tools = Tools(llm)
 
 # 웹소켓 연결을 테스트 할 수 있는 웹페이지
@@ -36,6 +36,7 @@ async def client(request: Request):
 # 웹소켓 설정
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    
     print(f"연결 완료 : {websocket.client}")
     await websocket.accept() # client의 websocket접속 허용
     await websocket.send_text(f"안녕하세요 : {websocket.client}")

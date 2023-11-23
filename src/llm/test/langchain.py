@@ -3,6 +3,7 @@
 작성: 염경훈
 날짜: 2023-09-20
 """
+import json
 import time
 import tiktoken
 import re
@@ -27,6 +28,7 @@ router = APIRouter(
     tags=["langchain"]
 )
 
+llms = Llm()
 trans = Translator()  #구글번역
 log = Log()
 
@@ -42,8 +44,9 @@ class CommonQueryParams:
         model:str,                 #모델명
         q: str                    #질문
     ):   
-        self.model = model.strip() 
+        self.model = model
         self.q = q                                  
+        self.llm = llms.get_llm(model.strip())
 
 @router.get(
     "/chat-models",                       #라우터경로
@@ -51,7 +54,7 @@ class CommonQueryParams:
 ) 
 async def chatModels(commons: CommonQueryParams = Depends()):
 
-    llm = getattr(Llm(), f"get_{commons.model}")()          # Llm클래스에서 model명에 맞는 함수 호출                          
+    llm = commons.llm          # Llm클래스에서 model명에 맞는 함수 호출                          
     # question = trans.translate(commons.q, dest="en").text   
     question = commons.q                              
 
@@ -111,8 +114,8 @@ async def chatModels(commons: CommonQueryParams = Depends()):
 ) 
 async def webRag(commons: CommonQueryParams = Depends()):
 
-    llm = getattr(Llm(), f"get_{commons.model}")()
-    embeddings = getattr(Llm(), f"get_{commons.model}_embeddings")()
+    llm = commons.llm
+    embeddings = llms.get_embeddings(commons.model)
     question = trans.translate(commons.q, dest="en").text
     # question = commons.q    
     search = Tools(llm).get_google_search()
@@ -127,7 +130,10 @@ async def webRag(commons: CommonQueryParams = Depends()):
 
     qa_chain = RetrievalQAWithSourcesChain.from_chain_type(llm, retriever=web_research_retriever)
     
-    result = qa_chain({"question": question})
+    chat = qa_chain({"question": question})
+    
+    result = {}
+    result["data"] = chat
 
     return result
 
@@ -140,8 +146,8 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
 
     start_time = time.time()
 
-    llm = getattr(Llm(), f"get_{commons.model}")()
-    embeddings: OpenAIEmbeddings = getattr(Llm(), f"get_{commons.model}_embeddings")()
+    llm = commons.llm
+    embeddings: OpenAIEmbeddings = llms.get_embeddings(commons.model)
     question = commons.q    
     db = Chroma(embedding_function=embeddings, persist_directory="./chroma_db")
     logger = log.get_logger(name="PDF", path="log/test.log", mode="w")
@@ -345,26 +351,46 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
     #     db.add_texts(array_text[0:200])
     #     del array_text[0:200] 
 
-    retriever = db.as_retriever(search_kwargs={"k": 2})
+    retriever = db.as_retriever(search_type="mmr", search_kwargs={"k": 30, "lambda_mult": 0.35})
+    # retriever = db.as_retriever(search_kwargs={"k": 3})
+    
+    test = retriever.get_relevant_documents(question)
+    print(test)
 
-    template = (
-        "You are an AI that searches for insurance terms and conditions"
-        "you answer in korean"
-        "Please search for the most appropriate clause for your question and provide detailed information"
-        "question: {question}"
-    )
+    template = """
+    You answer in korean
+    You are an AI that searches for insurance terms and conditions
+    Please search for the most appropriate clause for your question and provide detailed information
+    
+    ---
+    {context}
+    ---
+    
+    Question: {question}"""
+    
     prompt = PromptTemplate.from_template(template)
 
     chain = ConversationalRetrievalChain.from_llm(
         llm=llm,
         verbose=True,
         retriever=retriever,
-        condense_question_prompt=prompt,
-        condense_question_llm=llm,
-        return_source_documents=True
+        return_source_documents=True,
+        combine_docs_chain_kwargs={"prompt": prompt}
     )
     
     chat = chain({"question":question, "chat_history": []})
+    
+    # check_template = """
+    # You answer in korean
+    # If the retrival is valid for the question query, answer as is. If not, reply that it is difficult to answer.
+    
+    # Question: {question}
+    # Retirval: {text}"""
+    
+    # check_prompt = PromptTemplate.from_template(check_template)
+    
+    # chain = LLMChain(llm=llm, prompt=check_prompt, verbose=True)
+    # chat = chain.run(text=text["answer"], question=question)
 
     end_time = time.time()
 
@@ -373,14 +399,17 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
     print(f"프로그램 실행 시간: {execution_time} 초")
     # chat="테스트"
 
-    return chat
+    result = {}
+    result["data"] = chat
+    
+    return result
 
 @router.get(
-    "/summery",                       #라우터경로
+    "/summary",                       #라우터경로
     status_code=status.HTTP_200_OK      #HTTP status
 ) 
 async def summary(commons: CommonQueryParams = Depends()):
-    llm = getattr(Llm(), f"get_{commons.model}")()
+    llm = commons.llm
     question = commons.q
 
     prompt_template = """Please answer in Korean
@@ -388,7 +417,7 @@ async def summary(commons: CommonQueryParams = Depends()):
     You are an expert with excellent summarizing skills.
     You receive input from the conversation between the customer and the counselor and summarize the important content of the conversation.
 
-    The summary is short and concise in one sentence.
+    The summary must be short and concise, with no more than 100 characters.
     
     Write a concise summary of the following:
     {text}
@@ -396,10 +425,46 @@ async def summary(commons: CommonQueryParams = Depends()):
     prompt = PromptTemplate.from_template(prompt_template)
 
     chain = load_summarize_chain(llm, verbose=True, prompt=prompt)
-
     summarize_document_chain = AnalyzeDocumentChain(combine_docs_chain=chain, verbose=True)
-    summary = summarize_document_chain.run(question)
-    # chain = LLMChain(llm=llm, prompt=prompt, verbose=True)
-    # summary = chain.run(text=question)
+    
+    i = 0
+    while True:
+    
+        summary = summarize_document_chain.run(question)
+        
+        if len(summary) < 100 or i > 5:
+            break
+        
+        question = summary
+        i += 1
 
-    return summary
+
+    result = {}
+    result["data"] = summary
+    
+    return result
+
+
+@router.get(
+    "/retrival",                       #라우터경로
+    status_code=status.HTTP_200_OK      #HTTP status
+) 
+async def retrival(commons: CommonQueryParams = Depends()):
+    embeddings: OpenAIEmbeddings = llms.get_embeddings(commons.model)
+    question = commons.q    
+    db = Chroma(embedding_function=embeddings, persist_directory="./chroma_db")
+    
+    retriever = db.as_retriever(search_type="mmr", search_kwargs={"k": 10, "lambda_mult": 0.35})
+    
+    
+    documents = retriever.get_relevant_documents(question)
+    
+    texts = [v.page_content for v in documents]
+    
+    print(json.dumps(texts, ensure_ascii=False))
+    
+    result = {}
+    result["data"] = json.dumps(texts, ensure_ascii=False)
+    
+    return result
+    

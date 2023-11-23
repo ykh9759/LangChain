@@ -15,6 +15,8 @@ router = APIRouter(
     tags=["langchain"]
 )
 
+llms = Llm()
+
 #공통 파라미터
 class CommonQueryParams:
     def __init__(self, 
@@ -22,7 +24,8 @@ class CommonQueryParams:
         q: str                    #질문
     ):   
         self.model = model 
-        self.q = q                                  
+        self.q = q         
+        self.llm = llms.get_llm(model.strip())                         
 
 @router.get(
     "/agent",                       #라우터경로
@@ -31,7 +34,7 @@ class CommonQueryParams:
 async def agent(commons: CommonQueryParams = Depends()):
 
     trans = Translator()        #구글번역
-    llm = getattr(Llm(), f"get_{commons.model}")()          # Llm클래스에서 model명에 맞는 함수 호출                          
+    llm = commons.llm          # Llm클래스에서 model명에 맞는 함수 호출                          
     # question = trans.translate(commons.q, dest="en").text   
     question = commons.q                              
 
