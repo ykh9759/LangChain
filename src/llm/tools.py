@@ -5,12 +5,14 @@
 """
 
 from googletrans import Translator
-from langchain.utilities import SerpAPIWrapper, WikipediaAPIWrapper, WolframAlphaAPIWrapper, GoogleSearchAPIWrapper
-from langchain.chains import LLMMathChain, AnalyzeDocumentChain
+from langchain.utilities.serpapi import SerpAPIWrapper
+from langchain.utilities.wikipedia import WikipediaAPIWrapper
+from langchain.utilities.wolfram_alpha import WolframAlphaAPIWrapper
+from langchain.utilities.google_search import GoogleSearchAPIWrapper
+from langchain.chains import LLMMathChain
 from langchain.agents import Tool, load_tools
 from langchain.chat_models import ChatOpenAI
-from langchain.tools import WikipediaQueryRun
-from langchain.chains.summarize import load_summarize_chain
+from langchain.tools.wikipedia.tool import WikipediaQueryRun
 from PyNaver import Naver
 from src.config.settings import Settings
 
@@ -24,8 +26,8 @@ class Tools:
         self.search = SerpAPIWrapper(serpapi_api_key=self.settings.SERPAPI_API_KEY)
         self.wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
         self.wolfram = WolframAlphaAPIWrapper(wolfram_alpha_appid=self.settings.WOLFRAM_ALPHA_APPID)
-        self.google_search = GoogleSearchAPIWrapper(google_api_key=self.settings.GOOGLE_API_KEY, google_cse_id=self.settings.GOOGLE_CES_ID)
-        self.naver = Naver(client_id="rnniAuJmGFFu7FZDG4JG", client_secret="D0iBI0Vs6G")
+        self.google_search = GoogleSearchAPIWrapper(google_api_key=self.settings.GOOGLE_API_KEY, google_cse_id=self.settings.GOOGLE_CSE_ID)
+        self.naver = Naver(client_id=self.settings.NAVER_CLIENT_ID, client_secret=self.settings.NAVER_CLIENT_SECRET)
 
     def get_tools(self, list) -> None:
         tools = []

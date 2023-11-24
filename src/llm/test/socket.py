@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Header, Request, WebSocket, WebSocketDisconnect
 from fastapi.templating import Jinja2Templates
 from langchain.schema import SystemMessage
 from langchain.chains import LLMChain
@@ -16,8 +16,8 @@ from src.llm.llm import Llm
 
 
 router = APIRouter(
-    prefix="/socket",
-    tags=["socket"]
+    prefix="/test/socket",
+    tags=["test"]
 )
 
 # html파일을 서비스 
@@ -31,25 +31,24 @@ tools = Tools(llm)
 @router.get("/client")
 async def client(request: Request):
 
-    return templates.TemplateResponse("client.html", {"request":request})
+    return templates.TemplateResponse("client_test.html", {"request":request})
 
 # 웹소켓 설정
-@router.websocket("/ws")
+@router.websocket("/ws-llm")
 async def websocket_endpoint(websocket: WebSocket):
     
     print(f"연결 완료 : {websocket.client}")
     await websocket.accept() # client의 websocket접속 허용
-    await websocket.send_text(f"안녕하세요 : {websocket.client}")
 
     #대화내역저장
     memory = ConversationBufferWindowMemory(memory_key="chat_history", return_messages=True, k=5)
 
     try:
         while True:
-            message = await websocket.receive_text()  # client 메시지 수신대기
-            print(f"message received : {message} from : {websocket.client}")
+            data = await websocket.receive_json()  # client 메시지 수신대기
+            print(f"message received : {data} from : {websocket.client}")
 
-            search = tools.get_search(message)
+            search = tools.get_search(data["message"])
 
             system_template = """
                 You are a chatbot that answers questions in Korean.
@@ -73,11 +72,14 @@ async def websocket_endpoint(websocket: WebSocket):
                     memory=memory
             )
 
-            answer = llm_chain.run(input=message)
+            answer = llm_chain.run(input=data["message"])
             print(llm_chain.memory)
             print(answer)
             
-            await websocket.send_text(answer) # client에 메시지 전달
+            result = {}
+            result["message"] = answer
+            
+            await websocket.send_json(result) # client에 메시지 전달
     except WebSocketDisconnect:
         print(f"WebSocket 연결이 끊어짐")
 
@@ -86,18 +88,25 @@ async def websocket_endpoint(websocket: WebSocket):
 websocket_connections = {}
 
 @router.websocket("/ws/{client_id}")
-async def websocket_endpoint2(websocket: WebSocket, client_id: int):
+async def websocket_endpoint2(websocket: WebSocket, client_id:str):
     await websocket.accept()
+    
+    print(f"연결완료: {client_id}")
     # 클라이언트 아이디를 사용하여 연결을 딕셔너리에 추가
     websocket_connections[client_id] = websocket
 
     try:
         while True:
-            data = await websocket.receive_text()
+            data = await websocket.receive_json()
+            
+            print(f"받음: {data}")
             # 수신한 메시지를 다른 모든 클라이언트에게 브로드캐스트
             for connection_id, connection in websocket_connections.items():
                 if connection_id != client_id:
-                    await connection.send_text(f"{client_id} : {data}")
+                    
+                    result = {}
+                    result["message"] = f"{client_id} : {data['message']}"
+                    await connection.send_json(result)
     except WebSocketDisconnect:
         print(f"WebSocket 연결이 끊어짐: {client_id}")
     finally:

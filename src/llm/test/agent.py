@@ -11,8 +11,8 @@ from src.llm.llm import Llm
 from googletrans import Translator
 
 router = APIRouter(
-    prefix="/api",
-    tags=["langchain"]
+    prefix="/test/api",
+    tags=["test"]
 )
 
 llms = Llm()

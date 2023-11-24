@@ -13,6 +13,7 @@ from langchain.chains import LLMChain, RetrievalQAWithSourcesChain, Conversation
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.prompts import ChatPromptTemplate, PromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, AIMessagePromptTemplate
 from src.common.log import Log
+from src.common.func import Func
 from src.llm.tools import Tools
 from src.llm.llm import Llm
 from googletrans import Translator
@@ -24,19 +25,12 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.chains.summarize import load_summarize_chain
 
 router = APIRouter(
-    prefix="/api",
-    tags=["langchain"]
+    prefix="/test/api",
+    tags=["test"]
 )
 
 llms = Llm()
 trans = Translator()  #구글번역
-log = Log()
-
-def num_tokens_from_string(string: str, encoding_name: str) -> int:
-    """Returns the number of tokens in a text string."""
-    encoding = tiktoken.get_encoding(encoding_name)
-    num_tokens = len(encoding.encode(string))
-    return num_tokens
 
 #공통 파라미터
 class CommonQueryParams:
@@ -150,14 +144,14 @@ async def pdfRag(commons: CommonQueryParams = Depends()):
     embeddings: OpenAIEmbeddings = llms.get_embeddings(commons.model)
     question = commons.q    
     db = Chroma(embedding_function=embeddings, persist_directory="./chroma_db")
-    logger = log.get_logger(name="PDF", path="log/test.log", mode="w")
+    logger = Log.get_logger(name="PDF", path="log/test.log", mode="w")
 
     # loader = PyPDFLoader("file/test.pdf")
     # pages = loader.load()
     # cnt = 0
     # texts = ""
     # for i in pages:
-    #     cnt += num_tokens_from_string(i.page_content, "cl100k_base")
+    #     cnt += Func.num_tokens_from_string(i.page_content, "cl100k_base")
     #     pattern = r'\d+\x00/\x00\d+'
     #     texts += re.sub(pattern, "" , i.page_content)
     # print(f'예상 토큰 수 : {cnt}')

@@ -8,7 +8,8 @@ import logging
 
 class Log:
 
-    def get_logger(self, path, name: str = None, mode: str = "a"):
+    @staticmethod
+    def get_logger(path, name: str = None, mode: str = "a"):
         
         
         # 로거 생성

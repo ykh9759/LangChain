@@ -7,7 +7,8 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import PlainTextResponse
-from src.llm.test import langchain, agent, socket
+from src.llm.api import chat, classification, retrieval, summary
+from src.llm.test import langchain, agent, socket, api
 
 app = FastAPI()                 #FastAPI객체 생성
 
@@ -20,9 +21,17 @@ async def http_exception_handler(request, exc):
 async def validation_exception_handler(request, exc):
     return PlainTextResponse(str(exc), status_code=400)
 
-app.include_router(agent.router)     #라우터 추가
-app.include_router(langchain.router)     #라우터 추가
-app.include_router(socket.router)     #라우터 추가
+#라우터추가
+app.include_router(chat.router)
+# app.include_router(classification.router)
+app.include_router(retrieval.router)
+# app.include_router(summary.router)
+
+#테스트 라우터 추가
+app.include_router(agent.router)
+app.include_router(langchain.router)
+app.include_router(socket.router)
+app.include_router(api.router)
 
 @app.get("/") 
 def index():

@@ -15,4 +15,6 @@ class Settings(BaseSettings):
     SERPAPI_API_KEY: str = config("SERPAPI_API_KEY")
     WOLFRAM_ALPHA_APPID: str = config("WOLFRAM_ALPHA_APPID")
     GOOGLE_API_KEY: str = config("GOOGLE_API_KEY")
-    GOOGLE_CES_ID: str = config("GOOGLE_CES_ID")
+    GOOGLE_CSE_ID: str = config("GOOGLE_CSE_ID")
+    NAVER_CLIENT_ID: str = config("NAVER_CLIENT_ID")
+    NAVER_CLIENT_SECRET: str = config("NAVER_CLIENT_SECRET")
