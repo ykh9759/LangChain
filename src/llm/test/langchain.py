@@ -40,7 +40,7 @@ class CommonQueryParams:
     ):   
         self.model = model
         self.q = q                                  
-        self.llm = llms.get_llm(model.strip())
+        self.llm = llms.get_llm(model.strip(), "gpt-3.5-turbo")
 
 @router.get(
     "/chat-models",                       #라우터경로

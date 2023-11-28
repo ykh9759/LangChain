@@ -18,7 +18,7 @@ router = APIRouter(
 )
 
 #에러원인 llm변수가 아래 LLMChain의 llm파라미터에 사용되는데 llm객체를 전달하면 오류가 발생한다.
-llm = Llm().get_llm("openai")
+llm = Llm().get_llm("openai", "gpt-3.5-turbo")
 tools = Tools(llm)
 
 # 웹소켓 연결 추적을 위한 딕셔너리

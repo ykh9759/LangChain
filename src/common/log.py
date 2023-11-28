@@ -9,7 +9,7 @@ import logging
 class Log:
 
     @staticmethod
-    def get_logger(path, name: str = None, mode: str = "a"):
+    def get_logger(path: str, name: str = None, mode: str = "a"):
         
         
         # 로거 생성

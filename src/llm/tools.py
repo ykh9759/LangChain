@@ -4,6 +4,7 @@
 날짜: 2023-10-10
 """
 
+from typing import Any
 from googletrans import Translator
 from langchain.utilities.serpapi import SerpAPIWrapper
 from langchain.utilities.wikipedia import WikipediaAPIWrapper
@@ -21,7 +22,7 @@ class Tools:
     trans = Translator() 
     settings = Settings()
 
-    def __init__(self, llm: ChatOpenAI) -> None:
+    def __init__(self, llm: ChatOpenAI):
         self.llm_math_chain = LLMMathChain.from_llm(llm=llm)
         self.search = SerpAPIWrapper(serpapi_api_key=self.settings.SERPAPI_API_KEY)
         self.wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
@@ -29,7 +30,10 @@ class Tools:
         self.google_search = GoogleSearchAPIWrapper(google_api_key=self.settings.GOOGLE_API_KEY, google_cse_id=self.settings.GOOGLE_CSE_ID)
         self.naver = Naver(client_id=self.settings.NAVER_CLIENT_ID, client_secret=self.settings.NAVER_CLIENT_SECRET)
 
-    def get_tools(self, list) -> None:
+    def get_tools(
+        self,
+        list: list
+    ) -> Any:
         tools = []
 
         for tool in list:
@@ -77,7 +81,10 @@ class Tools:
         return tools
     
 
-    def get_search(self, query) -> None:
+    def get_search(
+        self,
+        query: str
+    ) -> str:
 
         en_query = self.trans.translate(query, dest="en").text
 

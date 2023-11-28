@@ -25,3 +25,19 @@ async def googleApi(commons: CommonQueryParams = Depends()):
     print(result)
     
     return result
+
+@router.get("/naver")
+async def naverApi(commons: CommonQueryParams = Depends()):
+    
+    result = api.naver_api(commons.q)
+    print(result)
+    
+    return result
+
+@router.get("/wiki")
+async def wikiApi(commons: CommonQueryParams = Depends()):
+    
+    result = api.wiki_api(commons.q)
+    print(result)
+    
+    return result
